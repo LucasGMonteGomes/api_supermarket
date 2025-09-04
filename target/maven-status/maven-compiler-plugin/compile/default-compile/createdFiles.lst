@@ -1,0 +1,9 @@
+org\example\Controllers\ProdutoController.class
+org\example\Com\DatabaseConnection.class
+org\example\Main.class
+org\example\Main$LoginHandler.class
+org\example\Controllers\UsuarioController.class
+org\example\Main$ProdutoHandler.class
+org\example\Models\Produto.class
+org\example\Main$RegisterHandler.class
+org\example\Models\Usuario.class
