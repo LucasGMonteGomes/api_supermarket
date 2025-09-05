@@ -2,11 +2,23 @@ package org.example.Controllers;
 
 import org.example.Com.DatabaseConnection;
 import org.example.Models.Usuario;
-import java.sql.*;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 
 public class UsuarioController {
+
+    /**
+     * Cadastra um novo usuário no banco de dados
+     * @param usuario Objeto Usuario contendo todos os dados
+     * @return true se inserido com sucesso, false caso ocorra erro
+     */
     public boolean criarUsuario(Usuario usuario) {
-        String sql = "INSERT INTO usuarios (nome, email, sexo, telefone, endereco, cidade, estado, bairro, pais, senha) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO usuarios " +
+                "(nome, email, sexo, telefone, endereco, cidade, estado, bairro, pais, senha) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -30,6 +42,12 @@ public class UsuarioController {
         }
     }
 
+    /**
+     * Realiza login do usuário verificando email e senha
+     * @param email Email do usuário
+     * @param senha Senha do usuário
+     * @return Objeto Usuario completo se login válido, null caso inválido
+     */
     public Usuario login(String email, String senha) {
         String sql = "SELECT * FROM usuarios WHERE email = ? AND senha = ?";
 
@@ -38,6 +56,7 @@ public class UsuarioController {
 
             stmt.setString(1, email);
             stmt.setString(2, senha);
+
             ResultSet rs = stmt.executeQuery();
 
             if (rs.next()) {
@@ -45,6 +64,14 @@ public class UsuarioController {
                 usuario.setId(rs.getInt("id"));
                 usuario.setNome(rs.getString("nome"));
                 usuario.setEmail(rs.getString("email"));
+                usuario.setSexo(rs.getString("sexo"));
+                usuario.setTelefone(rs.getString("telefone"));
+                usuario.setEndereco(rs.getString("endereco"));
+                usuario.setCidade(rs.getString("cidade"));
+                usuario.setEstado(rs.getString("estado"));
+                usuario.setBairro(rs.getString("bairro"));
+                usuario.setPais(rs.getString("pais"));
+                // Senha não retorna por segurança
                 return usuario;
             }
 
@@ -54,4 +81,3 @@ public class UsuarioController {
         return null;
     }
 }
-
