@@ -1,6 +1,8 @@
 package org.example;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import org.example.Com.DatabaseConnection;
 import org.example.Controllers.UsuarioController;
 import org.example.Controllers.ProdutoController;
@@ -15,6 +17,8 @@ import java.io.*;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 
@@ -30,6 +34,9 @@ public class Main {
         server.createContext("/api/register", new RegisterHandler());
         server.createContext("/api/login", new LoginHandler());
         server.createContext("/api/produtos", new ProdutoHandler());
+        server.createContext("/api/check-email", new CheckEmailHandler());
+        server.createContext("/api/reset-senha", new ResetSenhaHandler());
+
 
         server.setExecutor(null);
         server.start();
@@ -88,6 +95,72 @@ public class Main {
             }
         }
     }
+
+    //Recuperar senha
+    static class ResetSenhaHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if (!"POST".equals(exchange.getRequestMethod())) {
+                exchange.sendResponseHeaders(405, -1);
+                return;
+            }
+
+            String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+            JsonObject json = JsonParser.parseString(body).getAsJsonObject();
+
+            String email = json.get("email").getAsString();
+            String novaSenha = json.get("novaSenha").getAsString();
+
+            boolean ok = usuarioController.redefinirSenha(email, novaSenha);
+
+            String response = gson.toJson(new Response(ok, ok ? "Senha redefinida com sucesso!" : "Erro ao redefinir senha"));
+            byte[] respBytes = response.getBytes(StandardCharsets.UTF_8);
+
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
+            exchange.sendResponseHeaders(ok ? 200 : 400, respBytes.length);
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(respBytes);
+            }
+        }
+    }
+
+    //Verifica email
+    static class CheckEmailHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if (!"POST".equals(exchange.getRequestMethod())) {
+                exchange.sendResponseHeaders(405, -1);
+                return;
+            }
+
+            String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+            JsonObject json = JsonParser.parseString(body).getAsJsonObject();
+
+            String email = json.get("email").getAsString();
+
+            // verifica se o email existe
+            boolean exists = false;
+            try (Connection conn = DatabaseConnection.getConnection();
+                 PreparedStatement stmt = conn.prepareStatement("SELECT id FROM usuarios WHERE email = ?")) {
+                stmt.setString(1, email);
+                ResultSet rs = stmt.executeQuery();
+                exists = rs.next();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+
+            String response = gson.toJson(new Response(exists, exists ? "Email encontrado" : "Email não encontrado"));
+            byte[] respBytes = response.getBytes(StandardCharsets.UTF_8);
+
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, respBytes.length);
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(respBytes);
+            }
+        }
+    }
+
+
 
     // Produtos
     static class ProdutoHandler implements HttpHandler {
