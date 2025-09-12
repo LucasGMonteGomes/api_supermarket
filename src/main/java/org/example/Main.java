@@ -36,6 +36,7 @@ public class Main {
         server.createContext("/api/produtos", new ProdutoHandler());
         server.createContext("/api/check-email", new CheckEmailHandler());
         server.createContext("/api/reset-senha", new ResetSenhaHandler());
+        server.createContext("/api/google-login", new GoogleLoginHandler());
 
 
         server.setExecutor(null);
@@ -95,6 +96,37 @@ public class Main {
             }
         }
     }
+
+
+    static class GoogleLoginHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if (!"POST".equals(exchange.getRequestMethod())) {
+                exchange.sendResponseHeaders(405, -1);
+                return;
+            }
+
+            String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+            JsonObject json = JsonParser.parseString(body).getAsJsonObject();
+
+            String nome = json.has("nome") ? json.get("nome").getAsString() : "Usuário Google";
+            String email = json.get("email").getAsString();
+
+            Usuario usuario = usuarioController.loginGoogle(nome, email);
+
+            boolean ok = usuario != null;
+            String response = gson.toJson(new Response(ok, ok ? "Login Google realizado com sucesso!" : "Erro ao processar login Google"));
+
+            byte[] respBytes = response.getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
+            exchange.sendResponseHeaders(ok ? 200 : 400, respBytes.length);
+
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(respBytes);
+            }
+        }
+    }
+
 
     //Recuperar senha
     static class ResetSenhaHandler implements HttpHandler {
@@ -159,7 +191,6 @@ public class Main {
             }
         }
     }
-
 
 
     // Produtos

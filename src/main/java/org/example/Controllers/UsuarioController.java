@@ -90,6 +90,68 @@ public class UsuarioController {
     }
 
 
+    /**
+     * Faz login via Google. Se o usuário não existir, cria no banco com senha aleatória.
+     *
+     * @param nome  Nome do usuário vindo do Google
+     * @param email Email do usuário vindo do Google
+     * @return Usuario existente ou recém-criado, null se houver erro
+     */
+
+    public Usuario loginGoogle(String nome, String email) {
+        String sqlBusca = "SELECT * FROM usuarios WHERE email = ?";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmtBusca = conn.prepareStatement(sqlBusca)) {
+
+            stmtBusca.setString(1, email);
+            ResultSet rs = stmtBusca.executeQuery();
+
+            if (rs.next()) {
+                // Usuário existe → retorna objeto
+                Usuario usuario = new Usuario();
+                usuario.setId(rs.getInt("id"));
+                usuario.setNome(rs.getString("nome"));
+                usuario.setEmail(rs.getString("email"));
+                usuario.setSexo(rs.getString("sexo"));
+                usuario.setTelefone(rs.getString("telefone"));
+                usuario.setEndereco(rs.getString("endereco"));
+                usuario.setCidade(rs.getString("cidade"));
+                usuario.setEstado(rs.getString("estado"));
+                usuario.setBairro(rs.getString("bairro"));
+                usuario.setPais(rs.getString("pais"));
+                return usuario;
+            } else {
+                // Usuário não existe → cria com senha aleatória
+                String senhaAleatoria = java.util.UUID.randomUUID().toString(); // senha temporária
+                String sqlInsere = "INSERT INTO usuarios (nome, email, senha) VALUES (?, ?, ?)";
+
+                try (PreparedStatement stmtInsere = conn.prepareStatement(sqlInsere, PreparedStatement.RETURN_GENERATED_KEYS)) {
+                    stmtInsere.setString(1, nome);
+                    stmtInsere.setString(2, email);
+                    stmtInsere.setString(3, BCrypt.hashpw(senhaAleatoria, BCrypt.gensalt()));
+
+                    int affectedRows = stmtInsere.executeUpdate();
+                    if (affectedRows == 0) return null;
+
+                    ResultSet generatedKeys = stmtInsere.getGeneratedKeys();
+                    if (generatedKeys.next()) {
+                        Usuario novoUsuario = new Usuario();
+                        novoUsuario.setId(generatedKeys.getInt(1));
+                        novoUsuario.setNome(nome);
+                        novoUsuario.setEmail(email);
+                        return novoUsuario;
+                    }
+                }
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return null;
+    }
+
     public boolean redefinirSenha(String email, String novaSenha) {
         String sql = "UPDATE usuarios SET senha = ? WHERE email = ?";
 
